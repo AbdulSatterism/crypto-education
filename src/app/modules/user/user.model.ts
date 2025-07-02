@@ -28,14 +28,6 @@ const userSchema = new Schema<IUser, UserModal>(
       type: String,
       unique: true,
     },
-    facebookId: {
-      type: String,
-      unique: true,
-    },
-    phone: {
-      type: String,
-      required: true,
-    },
     role: {
       type: String,
       default: 'USER',
@@ -43,33 +35,6 @@ const userSchema = new Schema<IUser, UserModal>(
     image: {
       type: String,
       default: '/default/user.jpg',
-    },
-    gender: {
-      type: String,
-      enum: ['MALE', 'FEMALE', 'OTHERS'],
-    },
-    age: {
-      type: Number,
-    },
-    height: {
-      type: Number,
-    },
-    weight: {
-      type: Number,
-    },
-    country: {
-      type: String,
-    },
-    fitnessLevel: {
-      type: String,
-      enum: ['BASIC', 'INTERMEDIATE', 'ADVANCED'],
-    },
-    injury: {
-      type: String,
-    },
-    payment: {
-      type: Boolean,
-      default: false,
     },
     subscription: {
       type: Boolean,
@@ -83,7 +48,6 @@ const userSchema = new Schema<IUser, UserModal>(
       type: Boolean,
       default: false,
     },
-
     authentication: {
       type: {
         isResetPassword: {
@@ -105,7 +69,7 @@ const userSchema = new Schema<IUser, UserModal>(
   { timestamps: true },
 );
 
-//exist user check
+// Check if the user exists by ID or email
 userSchema.statics.isExistUserById = async (id: string) => {
   const isExist = await User.findById(id);
   return isExist;
@@ -116,33 +80,21 @@ userSchema.statics.isExistUserByEmail = async (email: string) => {
   return isExist;
 };
 
-//account check
-userSchema.statics.isAccountCreated = async (id: string) => {
-  const isUserExist: any = await User.findById(id);
-  return isUserExist.accountInformation.status;
-};
-
-//is match password
-userSchema.statics.isMatchPassword = async (
-  password: string,
-  hashPassword: string,
-): Promise<boolean> => {
-  return await bcrypt.compare(password, hashPassword);
-};
-
-//check user
+// Hash password before saving
 userSchema.pre('save', async function (next) {
-  //check user
+  // Check if email already exists
   const isExist = await User.findOne({ email: this.email });
   if (isExist) {
     throw new AppError(StatusCodes.BAD_REQUEST, 'Email already used');
   }
 
-  //password hash
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(config.bcrypt_salt_rounds),
-  );
+  // Hash password only if it's being modified or is new
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(
+      this.password,
+      Number(config.bcrypt_salt_rounds),
+    );
+  }
   next();
 });
 

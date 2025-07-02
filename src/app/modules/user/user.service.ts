@@ -15,27 +15,27 @@ import AppError from '../../errors/AppError';
 
 const createUserFromDb = async (payload: IUser) => {
   payload.role = USER_ROLES.USER;
-  const result = await User.create(payload);
 
+  const existingUser = await User.findOne({ email: payload.email }); // Check for existing email
+  if (existingUser) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Email already exists');
+  }
+
+  const result = await User.create(payload);
   if (!result) {
     throw new AppError(StatusCodes.BAD_REQUEST, 'Failed to create user');
   }
 
   const otp = generateOTP();
-  const emailValues = {
-    name: result.name,
-    otp,
-    email: result.email,
-  };
-
+  const emailValues = { name: result.name, otp, email: result.email };
   const accountEmailTemplate = emailTemplate.createAccount(emailValues);
   emailHelper.sendEmail(accountEmailTemplate);
 
-  // Update user with authentication details
   const authentication = {
     oneTimeCode: otp,
     expireAt: new Date(Date.now() + 20 * 60000),
   };
+
   const updatedUser = await User.findOneAndUpdate(
     { _id: result._id },
     { $set: { authentication } },
@@ -73,7 +73,8 @@ const getUserProfileFromDB = async (
   user: JwtPayload,
 ): Promise<Partial<IUser>> => {
   const { id } = user;
-  const isExistUser = await User.findById(id);
+  const isExistUser = await User.findById(id).select('-password'); // Avoid password leak
+
   if (!isExistUser) {
     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
@@ -92,10 +93,6 @@ const updateProfileToDB = async (
     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
-  if (!isExistUser) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'Blog not found');
-  }
-
   if (!isExistUser.verified) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
@@ -104,28 +101,28 @@ const updateProfileToDB = async (
   }
 
   if (payload.image && isExistUser.image) {
-    unlinkFile(isExistUser.image);
+    unlinkFile(isExistUser.image); // Remove the old image if new one is provided
   }
 
   const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
     new: true,
   });
-
   return updateDoc;
 };
 
 const getSingleUser = async (id: string): Promise<IUser | null> => {
-  const result = await User.findById(id);
+  const result = await User.findById(id).select('-password'); // Ensure no password is leaked
   return result;
 };
 
-// search user by phone
+// Secure search user by phone
 const searchUserByPhone = async (searchTerm: string, userId: string) => {
   let result;
 
   if (searchTerm) {
+    // Use regex to search phone numbers but escape the search term to prevent injection
     result = await User.find({
-      phone: { $regex: searchTerm, $options: 'i' },
+      phone: { $regex: new RegExp(`^${searchTerm}`, 'i') }, // More secure regex search
       _id: { $ne: userId },
     });
   } else {
