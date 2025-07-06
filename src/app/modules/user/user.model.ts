@@ -26,6 +26,7 @@ const userSchema = new Schema<IUser, UserModal>(
     },
     googleId: {
       type: String,
+      default: '',
       unique: true,
     },
     role: {
@@ -69,7 +70,7 @@ const userSchema = new Schema<IUser, UserModal>(
   { timestamps: true },
 );
 
-// Check if the user exists by ID or email
+//exist user check
 userSchema.statics.isExistUserById = async (id: string) => {
   const isExist = await User.findById(id);
   return isExist;
@@ -80,21 +81,33 @@ userSchema.statics.isExistUserByEmail = async (email: string) => {
   return isExist;
 };
 
-// Hash password before saving
+//account check
+userSchema.statics.isAccountCreated = async (id: string) => {
+  const isUserExist: any = await User.findById(id);
+  return isUserExist.accountInformation.status;
+};
+
+//is match password
+userSchema.statics.isMatchPassword = async (
+  password: string,
+  hashPassword: string,
+): Promise<boolean> => {
+  return await bcrypt.compare(password, hashPassword);
+};
+
+//check user
 userSchema.pre('save', async function (next) {
-  // Check if email already exists
+  //check user
   const isExist = await User.findOne({ email: this.email });
   if (isExist) {
     throw new AppError(StatusCodes.BAD_REQUEST, 'Email already used');
   }
 
-  // Hash password only if it's being modified or is new
-  if (this.isModified('password')) {
-    this.password = await bcrypt.hash(
-      this.password,
-      Number(config.bcrypt_salt_rounds),
-    );
-  }
+  //password hash
+  this.password = await bcrypt.hash(
+    this.password,
+    Number(config.bcrypt_salt_rounds),
+  );
   next();
 });
 

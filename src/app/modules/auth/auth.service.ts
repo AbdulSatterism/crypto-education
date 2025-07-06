@@ -39,7 +39,7 @@ const loginUserFromDB = async (payload: ILoginData) => {
     );
   }
 
-  const passwordMatch = await User.isMatchPassword(
+  const passwordMatch = await User?.isMatchPassword(
     password,
     isExistUser.password,
   );
