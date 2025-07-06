@@ -48,6 +48,5 @@ router.post(
 );
 
 router.post('/google-login', AuthController.googleLogin);
-router.post('/facebook-login', AuthController.facebookLogin);
 
 export const AuthRoutes = router;
