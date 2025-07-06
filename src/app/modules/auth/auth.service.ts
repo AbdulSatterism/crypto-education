@@ -39,12 +39,12 @@ const loginUserFromDB = async (payload: ILoginData) => {
     );
   }
 
-  const passwordMatch = await User?.isMatchPassword(
-    password,
-    isExistUser.password,
-  );
-  if (!passwordMatch) {
-    throw new AppError(StatusCodes.BAD_REQUEST, 'Incorrect password');
+  //check match password
+  if (
+    password &&
+    !(await User.isMatchPassword(password, isExistUser.password))
+  ) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Password is incorrect!');
   }
 
   const tokenPayload = {
@@ -73,16 +73,23 @@ const loginUserFromDB = async (payload: ILoginData) => {
   return { user: userWithoutPassword, accessToken, refreshToken };
 };
 
-// forget password
+//forget password
 const forgetPasswordToDB = async (email: string) => {
-  const user = await User.isExistUserByEmail(email);
-  if (!user) throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+  const isExistUser = await User.isExistUserByEmail(email);
+  if (!isExistUser) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+  }
 
+  //send mail
   const otp = generateOTP();
-  const value = { otp, email: user.email };
-  const emailContent = emailTemplate.resetPassword(value);
-  emailHelper.sendEmail(emailContent);
+  const value = {
+    otp,
+    email: isExistUser.email,
+  };
+  const forgetPassword = emailTemplate.resetPassword(value);
+  emailHelper.sendEmail(forgetPassword);
 
+  //save to DB
   const authentication = {
     oneTimeCode: otp,
     expireAt: new Date(Date.now() + 20 * 60000),
@@ -92,16 +99,36 @@ const forgetPasswordToDB = async (email: string) => {
 
 const verifyEmailToDB = async (payload: IVerifyEmail) => {
   const { email, oneTimeCode } = payload;
-  const user = await User.findOne({ email }).select('+authentication');
 
-  if (!user || user.authentication?.oneTimeCode !== oneTimeCode) {
-    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid or expired OTP');
+  const isExistUser = await User.findOne({ email }).select('+authentication');
+  if (!isExistUser) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+  }
+
+  if (!oneTimeCode) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Please give the otp, check your email we send a code',
+    );
+  }
+
+  // console.log(isExistUser.authentication?.oneTimeCode, { payload });
+  if (isExistUser.authentication?.oneTimeCode !== oneTimeCode) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'You provided wrong otp');
+  }
+
+  const date = new Date();
+  if (date > isExistUser.authentication?.expireAt) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Otp already expired, Please try again',
+    );
   }
 
   const tokenPayload = {
-    id: user._id,
-    role: user.role,
-    email: user.email,
+    id: isExistUser._id,
+    role: isExistUser.role,
+    email: isExistUser.email,
   };
 
   //create access token
@@ -118,16 +145,39 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
     config.jwt.jwtRefreshExpiresIn as string,
   );
 
-  const message = !user.verified
-    ? 'Your email has been successfully verified.'
-    : 'Verification Successful';
+  let message;
+  let data;
 
-  await User.findByIdAndUpdate(user._id, {
-    verified: true,
-    authentication: { oneTimeCode: null, expireAt: null },
-  });
+  if (!isExistUser.verified) {
+    await User.findOneAndUpdate(
+      { _id: isExistUser._id },
+      { verified: true, authentication: { oneTimeCode: null, expireAt: null } },
+    );
+    message = 'Your email has been successfully verified.';
+    data = { user: isExistUser, accessToken, refreshToken };
+  } else {
+    await User.findOneAndUpdate(
+      { _id: isExistUser._id },
+      {
+        authentication: {
+          isResetPassword: true,
+          oneTimeCode: null,
+          expireAt: null,
+        },
+      },
+    );
 
-  return { data: { user, accessToken, refreshToken }, message };
+    // const createToken = cryptoToken();
+    await ResetToken.create({
+      user: isExistUser._id,
+      token: accessToken,
+      expireAt: new Date(Date.now() + 20 * 60000),
+    });
+    message = 'Verification Successful';
+    data = { user: isExistUser, accessToken, refreshToken };
+  }
+
+  return { data, message };
 };
 
 const resetPasswordToDB = async (
@@ -135,68 +185,103 @@ const resetPasswordToDB = async (
   payload: IAuthResetPassword,
 ) => {
   const { newPassword, confirmPassword } = payload;
-  const resetToken = await ResetToken.isExistToken(token);
-  if (!resetToken) throw new AppError(StatusCodes.UNAUTHORIZED, 'Unauthorized');
 
-  const user = await User.findById(resetToken.user).select('+authentication');
-  if (!user?.authentication?.isResetPassword) {
+  //isExist token
+  const isExistToken = await ResetToken.isExistToken(token);
+
+  if (!isExistToken) {
+    throw new AppError(StatusCodes.UNAUTHORIZED, 'You are not authorized');
+  }
+
+  //user permission check
+  const isExistUser = await User.findById(isExistToken.user).select(
+    '+authentication',
+  );
+  if (!isExistUser?.authentication?.isResetPassword) {
     throw new AppError(
       StatusCodes.UNAUTHORIZED,
-      "You don't have permission to reset the password",
+      "You don't have permission to change the password. Please click again to 'Forgot Password'",
     );
   }
 
-  if (newPassword !== confirmPassword) {
-    throw new AppError(StatusCodes.BAD_REQUEST, "Passwords don't match");
+  //validity check
+  const isValid = await ResetToken.isExpireToken(token);
+  if (!isValid) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Token expired, Please click again to the forget password',
+    );
   }
 
-  const hashedPassword = await bcrypt.hash(
+  //check password
+  if (newPassword !== confirmPassword) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "New password and Confirm password doesn't match!",
+    );
+  }
+
+  const hashPassword = await bcrypt.hash(
     newPassword,
     Number(config.bcrypt_salt_rounds),
   );
-  await User.findByIdAndUpdate(user._id, {
-    password: hashedPassword,
-    authentication: { isResetPassword: false },
+
+  const updateData = {
+    password: hashPassword,
+    authentication: {
+      isResetPassword: false,
+    },
+  };
+
+  await User.findOneAndUpdate({ _id: isExistToken.user }, updateData, {
+    new: true,
   });
 };
 
-// change password
 const changePasswordToDB = async (
   user: JwtPayload,
   payload: IChangePassword,
 ) => {
   const { currentPassword, newPassword, confirmPassword } = payload;
-  const existingUser = await User.findById(user.id).select('+password');
 
-  if (!existingUser)
+  const isExistUser = await User.findById(user.id).select('+password');
+  if (!isExistUser) {
     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
-
-  if (!(await User.isMatchPassword(currentPassword, existingUser.password))) {
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      'Current password is incorrect',
-    );
   }
 
-  if (newPassword === currentPassword) {
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      'New password cannot be the same as the current password',
-    );
+  //current password match
+  if (
+    currentPassword &&
+    !(await User.isMatchPassword(currentPassword, isExistUser.password))
+  ) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Password is incorrect');
   }
 
+  //newPassword and current password
+  if (currentPassword === newPassword) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Please give different password from current password',
+    );
+  }
+  //new password and confirm password check
   if (newPassword !== confirmPassword) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "New password and confirm password don't match",
+      "Password and Confirm password doesn't matched",
     );
   }
 
-  const hashedPassword = await bcrypt.hash(
+  //hash password
+  const hashPassword = await bcrypt.hash(
     newPassword,
     Number(config.bcrypt_salt_rounds),
   );
-  await User.findByIdAndUpdate(existingUser._id, { password: hashedPassword });
+
+  const updateData = {
+    password: hashPassword,
+  };
+  await User.findOneAndUpdate({ _id: user.id }, updateData, { new: true });
 };
 
 const deleteAccountToDB = async (user: JwtPayload) => {
@@ -271,6 +356,8 @@ const resendVerificationEmailToDB = async (email: string) => {
     { new: true },
   );
 };
+
+//! login with google
 
 interface IGoogleLoginPayload {
   email: string;
