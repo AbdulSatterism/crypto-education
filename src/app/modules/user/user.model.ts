@@ -92,7 +92,7 @@ userSchema.statics.isMatchPassword = async (
   password: string,
   hashPassword: string,
 ): Promise<boolean> => {
-  return await bcrypt.compare(password, hashPassword);
+  return bcrypt.compare(password, hashPassword);
 };
 
 //check user
