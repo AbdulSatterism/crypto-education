@@ -26,8 +26,7 @@ const userSchema = new Schema<IUser, UserModal>(
     },
     googleId: {
       type: String,
-      default: '',
-      unique: true,
+      default: null,
     },
     role: {
       type: String,
@@ -35,7 +34,7 @@ const userSchema = new Schema<IUser, UserModal>(
     },
     image: {
       type: String,
-      default: '/default/user.jpg',
+      default: '/images/user.jpg',
     },
     subscription: {
       type: Boolean,
