@@ -61,13 +61,6 @@ const fileUploadHandler = () => {
 
   const filterFilter = (req: Request, file: any, cb: FileFilterCallback) => {
     if (file.fieldname === 'image' || file.fieldname === 'coverPhoto') {
-      // Allow all images without checking the type
-
-      // //TODO: update file system
-      // if (file.mimetype === 'image/gif' || file.mimetype.startsWith('image/')) {
-      //   cb(null, true);
-      // }
-
       cb(null, true);
     } else if (file.fieldname === 'gifImage') {
       if (file.mimetype === 'image/gif') {
