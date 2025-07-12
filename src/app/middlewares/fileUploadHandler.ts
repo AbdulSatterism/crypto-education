@@ -104,3 +104,84 @@ const fileUploadHandler = () => {
 };
 
 export default fileUploadHandler;
+
+// import { Request } from 'express';
+// import { StatusCodes } from 'http-status-codes';
+// import multer, { FileFilterCallback } from 'multer';
+// import * as AWS from 'aws-sdk';
+// import multerS3 from 'multer-s3';
+// import AppError from '../errors/AppError';
+
+// // Set up AWS S3 configuration
+// const s3 = new AWS.S3({
+//   accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Set your AWS access key ID here
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Set your AWS secret access key here
+//   region: process.env.AWS_REGION, // Set your AWS region here
+// });
+
+// const fileUploadHandler = () => {
+//   // S3 storage configuration for Multer
+//   const storage = multerS3({
+//     s3: s3,
+//     bucket: process.env.AWS_BUCKET_NAME, // Set your S3 bucket name here
+//     acl: 'public-read', // File permissions (public-read is typical for web content)
+//     metadata: function (req, file, cb) {
+//       cb(null, { fieldName: file.fieldname });
+//     },
+//     key: function (req, file, cb) {
+//       const fileExt = file.originalname.split('.').pop();
+//       const fileName = `${file.fieldname}-${Date.now()}.${fileExt}`;
+//       cb(null, `uploads/${fileName}`); // Directory in your S3 bucket
+//     },
+//   });
+
+//   // File filter function
+//   const fileFilter = (req: Request, file: any, cb: FileFilterCallback) => {
+//     if (file.fieldname === 'image' || file.fieldname === 'coverPhoto') {
+//       cb(null, true); // Allow all image types
+//     } else if (file.fieldname === 'gifImage') {
+//       if (file.mimetype === 'image/gif') {
+//         cb(null, true);
+//       } else {
+//         cb(
+//           new AppError(
+//             StatusCodes.BAD_REQUEST,
+//             'Only .gif files are supported',
+//           ),
+//         );
+//       }
+//     } else if (file.fieldname === 'media') {
+//       if (file.mimetype === 'video/mp4' || file.mimetype === 'audio/mpeg') {
+//         cb(null, true);
+//       } else {
+//         cb(
+//           new AppError(
+//             StatusCodes.BAD_REQUEST,
+//             'Only .mp4 and .mp3 files are supported',
+//           ),
+//         );
+//       }
+//     } else {
+//       cb(
+//         new AppError(
+//           StatusCodes.BAD_REQUEST,
+//           'This file type is not supported',
+//         ),
+//       );
+//     }
+//   };
+
+//   const upload = multer({
+//     storage: storage,
+//     fileFilter: fileFilter,
+//   }).fields([
+//     { name: 'image', maxCount: 1 },
+//     { name: 'coverPhoto', maxCount: 1 },
+//     { name: 'gifImage', maxCount: 1 },
+//     { name: 'media', maxCount: 1 },
+//   ]);
+
+//   return upload;
+// };
+
+// export default fileUploadHandler;

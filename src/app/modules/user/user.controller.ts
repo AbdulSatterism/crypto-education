@@ -97,6 +97,31 @@ const searchByPhone = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// for aws +>
+// const updateProfile = catchAsync(async (req: Request, res: Response) => {
+//   const user = req.user;
+
+//   let imageUrl;
+//   if (req.files && 'image' in req.files && req.files.image[0]) {
+//     // Get the S3 URL
+//     imageUrl = req.files.image[0].location;
+//   }
+
+//   const value = {
+//     image: imageUrl,
+//     ...req.body,
+//   };
+
+//   const result = await UserService.updateProfileToDB(user, value);
+
+//   sendResponse(res, {
+//     success: true,
+//     statusCode: StatusCodes.OK,
+//     message: 'Profile updated successfully',
+//     data: result,
+//   });
+// });
+
 export const UserController = {
   createUser,
   getUserProfile,

@@ -132,6 +132,40 @@ const searchUserByPhone = async (searchTerm: string, userId: string) => {
   return result;
 };
 
+//! for aws services
+
+// const updateProfileToDB = async (
+//   user: JwtPayload,
+//   payload: Partial<IUser>,
+// ): Promise<Partial<IUser | null>> => {
+//   const { id } = user;
+//   const isExistUser = await User.isExistUserById(id);
+
+//   if (!isExistUser) {
+//     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+//   }
+
+//   if (!isExistUser.verified) {
+//     throw new AppError(
+//       StatusCodes.BAD_REQUEST,
+//       'Please verify your account first',
+//     );
+//   }
+
+//   // Update the user's profile, including the image URL from S3
+//   const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
+//     new: true,
+//   });
+//   return updateDoc;
+// };
+
+// aws key
+
+// AWS_ACCESS_KEY_ID = your - access - key - id;
+// AWS_SECRET_ACCESS_KEY = your - secret - access - key;
+// AWS_REGION = your - region;
+// AWS_BUCKET_NAME = your - s3 - bucket - name;
+
 export const UserService = {
   createUserFromDb,
   getUserProfileFromDB,
