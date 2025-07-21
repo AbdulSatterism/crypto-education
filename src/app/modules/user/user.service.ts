@@ -10,7 +10,7 @@ import generateOTP from '../../../util/generateOTP';
 
 import { IUser } from './user.interface';
 import { User } from './user.model';
-import unlinkFile from '../../../shared/unlinkFile';
+
 import AppError from '../../errors/AppError';
 
 const createUserFromDb = async (payload: IUser) => {
@@ -82,33 +82,33 @@ const getUserProfileFromDB = async (
   return isExistUser;
 };
 
-const updateProfileToDB = async (
-  user: JwtPayload,
-  payload: Partial<IUser>,
-): Promise<Partial<IUser | null>> => {
-  const { id } = user;
-  const isExistUser = await User.isExistUserById(id);
+// const updateProfileToDB = async (
+//   user: JwtPayload,
+//   payload: Partial<IUser>,
+// ): Promise<Partial<IUser | null>> => {
+//   const { id } = user;
+//   const isExistUser = await User.isExistUserById(id);
 
-  if (!isExistUser) {
-    throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
-  }
+//   if (!isExistUser) {
+//     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+//   }
 
-  if (!isExistUser.verified) {
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      'Please verify your account first',
-    );
-  }
+//   if (!isExistUser.verified) {
+//     throw new AppError(
+//       StatusCodes.BAD_REQUEST,
+//       'Please verify your account first',
+//     );
+//   }
 
-  if (payload.image && isExistUser.image) {
-    unlinkFile(isExistUser.image); // Remove the old image if new one is provided
-  }
+//   if (payload.image && isExistUser.image) {
+//     unlinkFile(isExistUser.image); // Remove the old image if new one is provided
+//   }
 
-  const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
-    new: true,
-  });
-  return updateDoc;
-};
+//   const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
+//     new: true,
+//   });
+//   return updateDoc;
+// };
 
 const getSingleUser = async (id: string): Promise<IUser | null> => {
   const result = await User.findById(id).select('-password'); // Ensure no password is leaked
@@ -134,30 +134,30 @@ const searchUserByPhone = async (searchTerm: string, userId: string) => {
 
 //! for aws services
 
-// const updateProfileToDB = async (
-//   user: JwtPayload,
-//   payload: Partial<IUser>,
-// ): Promise<Partial<IUser | null>> => {
-//   const { id } = user;
-//   const isExistUser = await User.isExistUserById(id);
+const updateProfileToDB = async (
+  user: JwtPayload,
+  payload: Partial<IUser>,
+): Promise<Partial<IUser | null>> => {
+  const { id } = user;
+  const isExistUser = await User.isExistUserById(id);
 
-//   if (!isExistUser) {
-//     throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
-//   }
+  if (!isExistUser) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+  }
 
-//   if (!isExistUser.verified) {
-//     throw new AppError(
-//       StatusCodes.BAD_REQUEST,
-//       'Please verify your account first',
-//     );
-//   }
+  if (!isExistUser.verified) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      'Please verify your account first',
+    );
+  }
 
-//   // Update the user's profile, including the image URL from S3
-//   const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
-//     new: true,
-//   });
-//   return updateDoc;
-// };
+  // Update the user's profile, including the image URL from S3
+  const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
+    new: true,
+  });
+  return updateDoc;
+};
 
 // aws key
 

@@ -46,28 +46,28 @@ const getUserProfile = catchAsync(async (req: Request, res: Response) => {
 });
 
 //update profile
-const updateProfile = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
+// const updateProfile = catchAsync(async (req: Request, res: Response) => {
+//   const user = req.user;
 
-  let image;
-  if (req.files && 'image' in req.files && req.files.image[0]) {
-    image = `/images/${req.files.image[0].filename}`;
-  }
+//   let image;
+//   if (req.files && 'image' in req.files && req.files.image[0]) {
+//     image = `/images/${req.files.image[0].filename}`;
+//   }
 
-  const value = {
-    image,
-    ...req.body,
-  };
+//   const value = {
+//     image,
+//     ...req.body,
+//   };
 
-  const result = await UserService.updateProfileToDB(user, value);
+//   const result = await UserService.updateProfileToDB(user, value);
 
-  sendResponse(res, {
-    success: true,
-    statusCode: StatusCodes.OK,
-    message: 'Profile updated successfully',
-    data: result,
-  });
-});
+//   sendResponse(res, {
+//     success: true,
+//     statusCode: StatusCodes.OK,
+//     message: 'Profile updated successfully',
+//     data: result,
+//   });
+// });
 
 const getSingleUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.getSingleUser(req.params.id);
@@ -98,29 +98,29 @@ const searchByPhone = catchAsync(async (req: Request, res: Response) => {
 });
 
 // for aws +>
-// const updateProfile = catchAsync(async (req: Request, res: Response) => {
-//   const user = req.user;
+const updateProfile = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
 
-//   let imageUrl;
-//   if (req.files && 'image' in req.files && req.files.image[0]) {
-//     // Get the S3 URL
-//     imageUrl = req.files.image[0].location;
-//   }
+  let imageUrl;
+  if (req.files && 'image' in req.files && req.files.image[0]) {
+    // Get the S3 URL
+    imageUrl = req.files.image[0].location;
+  }
 
-//   const value = {
-//     image: imageUrl,
-//     ...req.body,
-//   };
+  const value = {
+    image: imageUrl,
+    ...req.body,
+  };
 
-//   const result = await UserService.updateProfileToDB(user, value);
+  const result = await UserService.updateProfileToDB(user, value);
 
-//   sendResponse(res, {
-//     success: true,
-//     statusCode: StatusCodes.OK,
-//     message: 'Profile updated successfully',
-//     data: result,
-//   });
-// });
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Profile updated successfully',
+    data: result,
+  });
+});
 
 export const UserController = {
   createUser,
